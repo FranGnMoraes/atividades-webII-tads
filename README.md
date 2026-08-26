@@ -27,7 +27,6 @@ flowchart LR
     A["Aula 01: Node.js & SSR vs. CSR"] --> B["Aula 02: Padrão MVC & Pirâmide de Testes"]
     B --> C["Aula 03: Monólito Modular por Features"]
     C --> D["Aula 04: Persistência com Prisma ORM"]
-    D -.-> E["Próximos Desafios: Clean Architecture & DDD"]
 ```
 
 ---
@@ -95,15 +94,6 @@ flowchart LR
   * **Utilitário Genérico de Paginação & Ordenação (`shared/pagination.ts`)**: Suporte a paginação com metadados (`page`, `limit`, `total`, `totalPages`, `skip`, `orderBy`) e filtros relacionais avançados.
 * ✅ **Validação:** Suíte de 24 testes de integração utilizando banco SQLite temporário isolado por execução e requisições no `test.http`.
 
----
-
-## 🔮 Roadmap / Próximos Conteúdos
-
-Conforme novas aulas e desafios forem disponibilizados, este repositório será continuado com:
-
-- [ ] **Aula 05**: Arquitetura em Camadas, Hexagonal (*Ports & Adapters*) e *Clean Architecture*.
-- [ ] **Aula 06**: *Domain-Driven Design* (DDD) — Entidades, *Value Objects*, Agregados e Serviços de Domínio.
-- [ ] **Aulas Futuras**: Autenticação/Autorização com JWT, Microsserviços e Deploy.
 
 ---
 
