@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Busca de Cartões</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-100 min-h-screen p-6">
+    <div class="max-w-xl mx-auto bg-white rounded-lg shadow p-6">
+      <header class="mb-4">
+        <h1 class="text-xl font-bold text-slate-800">Busca de Cartões</h1>
+        <p class="text-sm text-slate-500">Termo buscado: "<%= query %>"</p>
+      </header>
+
+      <ul class="space-y-2 mb-6">
+        <% if (cards.length === 0) { %>
+          <li class="text-sm text-slate-400 italic">Nenhum cartão encontrado.</li>
+        <% } %>
+        <% cards.forEach((card) => { %>
+          <li class="border rounded p-3 shadow-sm flex justify-between items-center">
+            <div>
+              <p class="font-medium text-slate-800"><%= card.title %></p>
+              <% if (card.description) { %>
+                <p class="text-xs text-slate-500"><%= card.description %></p>
+              <% } %>
+            </div>
+            <a href="/cards/<%= card.id %>" class="text-xs text-blue-600 hover:underline">Ver detalhe</a>
+          </li>
+        <% }) %>
+      </ul>
+
+      <a href="/" class="text-sm text-slate-600 hover:underline">&larr; Voltar ao quadro</a>
+    </div>
+  </body>
+</html>

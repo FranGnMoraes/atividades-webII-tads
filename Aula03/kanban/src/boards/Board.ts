@@ -1,6 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { Column, type ColumnSnapshot } from './Column.js';
 import { ColumnNotFoundError } from './errors.js';
-import { NotImplementedError } from '../shared/errors.js';
 
 export interface BoardSnapshot {
   id: string;
@@ -48,13 +48,12 @@ export class Board {
     return this._columns.some((c) => c.id === columnId);
   }
 
-  /**
-   * TODO (Atividade 7): criar e adicionar uma nova coluna ao quadro.
-   * Pontos a decidir: como gerar o `id`, qual `order` atribuir (última
-   * posição?) e se nomes de coluna duplicados devem ser proibidos.
-   */
-  addColumn(_name: string, _wipLimit: number | null = null): Column {
-    throw new NotImplementedError('Board#addColumn');
+  addColumn(name: string, wipLimit: number | null = null): Column {
+    const id = `col-${randomUUID().slice(0, 8)}`;
+    const nextOrder = this._columns.length > 0 ? Math.max(...this._columns.map((c) => c.order)) + 1 : 1;
+    const column = Column.create(id, name, nextOrder, wipLimit);
+    this._columns.push(column);
+    return column;
   }
 
   toSnapshot(): BoardSnapshot {

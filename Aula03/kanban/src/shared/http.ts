@@ -9,12 +9,14 @@ import type { Response } from 'express';
  * este tipo (ou usar `res.redirect` diretamente na rota) faz parte da
  * atividade — é uma decisão de vocês, não deste template.
  */
-export interface ControllerResult {
-  status: number;
-  view: string;
-  locals: Record<string, unknown>;
-}
+export type ControllerResult =
+  | { status: number; view: string; locals: Record<string, unknown>; redirect?: never }
+  | { redirect: string; status?: number; view?: never; locals?: never };
 
 export function respond(res: Response, result: ControllerResult): void {
+  if (result.redirect) {
+    res.redirect(result.status ?? 302, result.redirect);
+    return;
+  }
   res.status(result.status).render(result.view, result.locals);
 }

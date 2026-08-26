@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { errorHandler } from '../../../src/shared/errorHandler.js';
 import { NotImplementedError } from '../../../src/shared/errors.js';
 import { ColumnNotFoundError } from '../../../src/boards/errors.js';
+import { CardNotFoundError, DuplicateCardTitleError, WipLimitExceededError } from '../../../src/cards/errors.js';
 
 function buildResponseDouble(): Response {
   const res: Partial<Response> = {};
@@ -21,12 +22,24 @@ describe('errorHandler', () => {
     expect(res.render).toHaveBeenCalledWith('error', expect.objectContaining({ status: 501 }));
   });
 
-  it('mapeia outro erro conhecido (ColumnNotFoundError) para 404', () => {
+  it('mapeia ColumnNotFoundError e CardNotFoundError para 404', () => {
     const res = buildResponseDouble();
-
     errorHandler(new ColumnNotFoundError('col-x'), {} as never, res, () => undefined);
-
     expect(res.status).toHaveBeenCalledWith(404);
+
+    const res2 = buildResponseDouble();
+    errorHandler(new CardNotFoundError('card-x'), {} as never, res2, () => undefined);
+    expect(res2.status).toHaveBeenCalledWith(404);
+  });
+
+  it('mapeia DuplicateCardTitleError e WipLimitExceededError para 409', () => {
+    const res1 = buildResponseDouble();
+    errorHandler(new DuplicateCardTitleError('Título duplicado'), {} as never, res1, () => undefined);
+    expect(res1.status).toHaveBeenCalledWith(409);
+
+    const res2 = buildResponseDouble();
+    errorHandler(new WipLimitExceededError('Em Andamento', 3), {} as never, res2, () => undefined);
+    expect(res2.status).toHaveBeenCalledWith(409);
   });
 
   it('usa 500 para um erro que não está no mapa', () => {

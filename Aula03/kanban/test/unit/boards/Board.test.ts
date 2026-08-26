@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Board } from '../../../src/boards/Board.js';
 import { Column } from '../../../src/boards/Column.js';
-import { ColumnNotFoundError } from '../../../src/boards/errors.js';
-import { NotImplementedError } from '../../../src/shared/errors.js';
+import { ColumnNotFoundError, InvalidColumnNameError } from '../../../src/boards/errors.js';
 
 function buildBoard(): Board {
   const columns = [
@@ -45,11 +44,31 @@ describe('Board#hasColumn', () => {
   });
 });
 
-describe('Board#addColumn', () => {
-  it('ainda não está implementado (Atividade 7)', () => {
+describe('Board#addColumn (Atividade 7)', () => {
+  it('adiciona uma nova coluna ao final com id gerado', () => {
     const board = buildBoard();
 
-    expect(() => board.addColumn('Em Revisão')).toThrow(NotImplementedError);
+    const column = board.addColumn('Em Revisão', 5);
+
+    expect(column.name).toBe('Em Revisão');
+    expect(column.wipLimit).toBe(5);
+    expect(column.order).toBe(3);
+    expect(board.columns).toHaveLength(3);
+    expect(board.hasColumn(column.id)).toBe(true);
+  });
+
+  it('adiciona coluna quando não havia colunas antes', () => {
+    const emptyBoard = Board.create('b-0', 'Vazio', []);
+    const column = emptyBoard.addColumn('Primeira Coluna');
+
+    expect(column.order).toBe(1);
+    expect(column.wipLimit).toBeNull();
+  });
+
+  it('rejeita nome de coluna inválido', () => {
+    const board = buildBoard();
+
+    expect(() => board.addColumn('a')).toThrow(InvalidColumnNameError);
   });
 });
 

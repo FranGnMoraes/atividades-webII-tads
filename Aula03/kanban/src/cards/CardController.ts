@@ -1,62 +1,146 @@
 import type { CardRepository } from './CardRepository.js';
 import type { BoardRepository } from '../boards/BoardRepository.js';
 import type { ControllerResult } from '../shared/http.js';
-import { NotImplementedError } from '../shared/errors.js';
+import { Card, type CardPriority } from './Card.js';
+import {
+  CardNotFoundError,
+  DuplicateCardTitleError,
+  WipLimitExceededError,
+} from './errors.js';
+import { ColumnNotFoundError } from '../boards/errors.js';
+import { toCardDetailViewModel } from './cardView.js';
 
-/**
- * CONTROLLER — nenhum método está implementado ainda. Isso é proposital:
- * cada método corresponde a uma atividade proposta na Aula 03 (ver
- * aula03.md). O construtor já recebe os dois repositórios que vocês vão
- * precisar — `cardRepository` para persistir cartões, `boardRepository`
- * para validar que uma coluna existe antes de criar/mover um cartão nela.
- */
 export class CardController {
   constructor(
     private readonly cardRepository: CardRepository,
     private readonly boardRepository: BoardRepository,
   ) {}
 
-  /**
-   * TODO (Atividade 1): criar um cartão a partir do corpo da requisição
-   * (`{ title, columnId, priority?, description? }`) e redirecionar de
-   * volta para `/`. Regras a aplicar: título válido (`Card.create` já
-   * valida), coluna precisa existir no quadro (`boardRepository`), e não
-   * pode haver título duplicado na mesma coluna (Atividade 6 — podem
-   * implementar já aqui ou depois, é a mesma regra).
-   */
-  create(_body: unknown): ControllerResult {
-    throw new NotImplementedError('CardController#create');
+  create(body: unknown): ControllerResult {
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const title = typeof raw.title === 'string' ? raw.title : '';
+    const columnId = typeof raw.columnId === 'string' ? raw.columnId : '';
+    const priority = raw.priority as CardPriority | undefined;
+    const description = typeof raw.description === 'string' ? raw.description : '';
+
+    const board = this.boardRepository.getDefault();
+    if (!board.hasColumn(columnId)) {
+      throw new ColumnNotFoundError(columnId);
+    }
+
+    if (this.cardRepository.existsWithTitleInColumn(title, columnId)) {
+      throw new DuplicateCardTitleError(title);
+    }
+
+    const column = board.findColumn(columnId);
+    if (column.wipLimit !== null && this.cardRepository.findByColumn(columnId).length >= column.wipLimit) {
+      throw new WipLimitExceededError(column.name, column.wipLimit);
+    }
+
+    const card = Card.create(title, columnId, priority, description);
+    this.cardRepository.save(card);
+    return { redirect: '/' };
   }
 
-  /**
-   * TODO (Atividade 2): mover um cartão para outra coluna
-   * (`{ columnId }` no corpo). Regras: coluna destino precisa existir;
-   * respeitar o limite de WIP da coluna destino (Atividade 5).
-   */
-  move(_id: string, _body: unknown): ControllerResult {
-    throw new NotImplementedError('CardController#move');
+  move(id: string, body: unknown): ControllerResult {
+    const card = this.cardRepository.findById(id);
+    if (!card) {
+      throw new CardNotFoundError(id);
+    }
+
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const targetColumnId = typeof raw.columnId === 'string' ? raw.columnId : '';
+
+    const board = this.boardRepository.getDefault();
+    if (!board.hasColumn(targetColumnId)) {
+      throw new ColumnNotFoundError(targetColumnId);
+    }
+
+    if (card.columnId !== targetColumnId) {
+      const targetColumn = board.findColumn(targetColumnId);
+      if (
+        targetColumn.wipLimit !== null &&
+        this.cardRepository.findByColumn(targetColumnId).length >= targetColumn.wipLimit
+      ) {
+        throw new WipLimitExceededError(targetColumn.name, targetColumn.wipLimit);
+      }
+
+      if (this.cardRepository.existsWithTitleInColumn(card.title, targetColumnId, card.id)) {
+        throw new DuplicateCardTitleError(card.title);
+      }
+
+      card.changeColumn(targetColumnId);
+      this.cardRepository.save(card);
+    }
+
+    return { redirect: '/' };
   }
 
-  /**
-   * TODO (Atividade 3): editar título/descrição/prioridade de um cartão
-   * existente (`{ title?, description?, priority? }`).
-   */
-  update(_id: string, _body: unknown): ControllerResult {
-    throw new NotImplementedError('CardController#update');
+  update(id: string, body: unknown): ControllerResult {
+    const card = this.cardRepository.findById(id);
+    if (!card) {
+      throw new CardNotFoundError(id);
+    }
+
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+
+    if (typeof raw.title === 'string') {
+      const newTitle = raw.title;
+      if (this.cardRepository.existsWithTitleInColumn(newTitle, card.columnId, card.id)) {
+        throw new DuplicateCardTitleError(newTitle);
+      }
+      card.rename(newTitle, typeof raw.description === 'string' ? raw.description : undefined);
+    } else if (typeof raw.description === 'string') {
+      card.rename(card.title, raw.description);
+    }
+
+    if (raw.priority !== undefined) {
+      card.changePriority(raw.priority as CardPriority);
+    }
+
+    this.cardRepository.save(card);
+    return { redirect: '/' };
   }
 
-  /** TODO (Atividade 4): excluir um cartão existente. */
-  remove(_id: string): ControllerResult {
-    throw new NotImplementedError('CardController#remove');
+  remove(id: string): ControllerResult {
+    const card = this.cardRepository.findById(id);
+    if (!card) {
+      throw new CardNotFoundError(id);
+    }
+
+    this.cardRepository.delete(id);
+    return { redirect: '/' };
   }
 
-  /** TODO (Atividade 8, estica): página de detalhe de um cartão. */
-  showDetail(_id: string): ControllerResult {
-    throw new NotImplementedError('CardController#showDetail');
+  showDetail(id: string): ControllerResult {
+    const card = this.cardRepository.findById(id);
+    if (!card) {
+      throw new CardNotFoundError(id);
+    }
+
+    const board = this.boardRepository.getDefault();
+    const column = board.findColumn(card.columnId);
+
+    return {
+      status: 200,
+      view: 'cards/show',
+      locals: { card: toCardDetailViewModel(card, column) },
+    };
   }
 
-  /** TODO (Atividade 9, estica): buscar cartões por título (`?query=`). */
-  search(_query: unknown): ControllerResult {
-    throw new NotImplementedError('CardController#search');
+  search(query: unknown): ControllerResult {
+    const raw = typeof query === 'object' && query !== null ? (query as Record<string, unknown>) : {};
+    const q = typeof raw.query === 'string' ? raw.query.trim() : '';
+
+    const allCards = this.cardRepository.findAll();
+    const matchingCards = q
+      ? allCards.filter((card) => card.title.toLowerCase().includes(q.toLowerCase()))
+      : allCards;
+
+    return {
+      status: 200,
+      view: 'cards/search',
+      locals: { query: q, cards: matchingCards },
+    };
   }
 }

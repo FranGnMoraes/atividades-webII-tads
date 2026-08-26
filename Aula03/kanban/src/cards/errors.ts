@@ -30,3 +30,24 @@ export class InvalidPriorityError extends Error {
     this.name = 'InvalidPriorityError';
   }
 }
+
+export class CardNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Cartão ${id} não encontrado`);
+    this.name = 'CardNotFoundError';
+  }
+}
+
+export class DuplicateCardTitleError extends Error {
+  constructor(title: string) {
+    super(`Já existe um cartão com o título "${title}" nesta coluna`);
+    this.name = 'DuplicateCardTitleError';
+  }
+}
+
+export class WipLimitExceededError extends Error {
+  constructor(columnName: string, limit: number) {
+    super(`Limite de WIP atingido na coluna "${columnName}" (máximo: ${limit})`);
+    this.name = 'WipLimitExceededError';
+  }
+}

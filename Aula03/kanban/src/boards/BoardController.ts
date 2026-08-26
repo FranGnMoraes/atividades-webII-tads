@@ -1,7 +1,6 @@
 import type { BoardRepository } from './BoardRepository.js';
 import type { CardRepository } from '../cards/CardRepository.js';
 import type { ControllerResult } from '../shared/http.js';
-import { NotImplementedError } from '../shared/errors.js';
 import { toBoardViewModel } from './boardView.js';
 
 /**
@@ -28,11 +27,17 @@ export class BoardController {
     };
   }
 
-  /**
-   * TODO (Atividade 7): criar uma nova coluna no quadro a partir do corpo
-   * da requisição (`{ name, wipLimit? }`) e redirecionar de volta para `/`.
-   */
-  createColumn(_body: unknown): ControllerResult {
-    throw new NotImplementedError('BoardController#createColumn');
+  createColumn(body: unknown): ControllerResult {
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
+    const name = typeof raw.name === 'string' ? raw.name : '';
+    const rawWip = raw.wipLimit;
+    const wipLimit =
+      rawWip !== undefined && rawWip !== '' && rawWip !== null && !Number.isNaN(Number(rawWip))
+        ? Number(rawWip)
+        : null;
+
+    const board = this.boardRepository.getDefault();
+    board.addColumn(name, wipLimit);
+    return { redirect: '/' };
   }
 }

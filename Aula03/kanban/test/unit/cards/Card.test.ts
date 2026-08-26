@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Card } from '../../../src/cards/Card.js';
 import { InvalidCardColumnError, InvalidCardTitleError, InvalidPriorityError } from '../../../src/cards/errors.js';
-import { NotImplementedError } from '../../../src/shared/errors.js';
 
 describe('Card.create', () => {
   it('cria um cartão com prioridade baixa e descrição vazia por padrão', () => {
@@ -59,22 +58,54 @@ describe('Card.restore', () => {
   });
 });
 
-describe('métodos ainda não implementados (atividades 2 e 3)', () => {
-  it('Card#changeColumn lança NotImplementedError', () => {
+describe('Card#changeColumn (Atividade 2)', () => {
+  it('altera a coluna do cartão com sucesso', () => {
     const card = Card.create('Cartão', 'col-todo');
+    card.changeColumn('col-doing');
 
-    expect(() => card.changeColumn('col-doing')).toThrow(NotImplementedError);
+    expect(card.columnId).toBe('col-doing');
   });
 
-  it('Card#rename lança NotImplementedError', () => {
+  it('rejeita columnId inválido ao mover', () => {
     const card = Card.create('Cartão', 'col-todo');
+    expect(() => card.changeColumn('   ')).toThrow(InvalidCardColumnError);
+  });
+});
 
-    expect(() => card.rename('Novo título')).toThrow(NotImplementedError);
+describe('Card#rename (Atividade 3)', () => {
+  it('renomeia o cartão e atualiza descrição', () => {
+    const card = Card.create('Título Original', 'col-todo', 'baixa', 'Descrição Antiga');
+    card.rename('Novo Título', 'Nova Descrição');
+
+    expect(card.title).toBe('Novo Título');
+    expect(card.description).toBe('Nova Descrição');
   });
 
-  it('Card#changePriority lança NotImplementedError', () => {
-    const card = Card.create('Cartão', 'col-todo');
+  it('renomeia sem alterar a descrição se omitida', () => {
+    const card = Card.create('Título Original', 'col-todo', 'baixa', 'Descrição Antiga');
+    card.rename('Novo Título');
 
-    expect(() => card.changePriority('alta')).toThrow(NotImplementedError);
+    expect(card.title).toBe('Novo Título');
+    expect(card.description).toBe('Descrição Antiga');
+  });
+
+  it('rejeita novo título inválido', () => {
+    const card = Card.create('Título Original', 'col-todo');
+    expect(() => card.rename('ab')).toThrow(InvalidCardTitleError);
+  });
+});
+
+describe('Card#changePriority (Atividade 3)', () => {
+  it('altera a prioridade do cartão', () => {
+    const card = Card.create('Cartão', 'col-todo', 'baixa');
+    card.changePriority('alta');
+
+    expect(card.priority).toBe('alta');
+  });
+
+  it('rejeita prioridade inválida', () => {
+    const card = Card.create('Cartão', 'col-todo');
+    // @ts-expect-error testando valor inválido
+    expect(() => card.changePriority('invalida')).toThrow(InvalidPriorityError);
   });
 });
