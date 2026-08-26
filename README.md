@@ -14,7 +14,7 @@
 
 ## 👩‍💻 Sobre Mim e Este Repositório
 
-Olá! Meu nome é **Francielle Moraes** e sou estudante do curso superior de **Tecnologia em Análise e Desenvolvimento de Sistemas (TADS)**.
+Olá! Meu nome é **Francine Moraes** e sou estudante do curso superior de **Tecnologia em Análise e Desenvolvimento de Sistemas (TADS)**.
 
 Este repositório serve como meu laboratório prático e portfólio de estudos da disciplina de **Desenvolvimento Web II**. Aqui documento minha evolução no desenvolvimento **Backend com Node.js e TypeScript**, aplicando padrões arquiteturais consolidados, boas práticas de Clean Code, testes automatizados e modelagem de banco de dados relacional com ORM.
 
@@ -136,7 +136,7 @@ npm run dev
 Fique à vontade para entrar em contato ou conferir meus outros projetos:
 
 * 🌐 **GitHub**: [@FranGnMoraes](https://github.com/FranGnMoraes)
-* 💼 **LinkedIn**: [Francielle Moraes](https://www.linkedin.com/in/francielle-moraes)
+* 💼 **LinkedIn**: [Francine Moraes](https://www.linkedin.com/in/francine-moraes)
 
 ---
 <p align="center">Construído com foco em qualidade de código, arquitetura limpa e testes 🚀</p>
