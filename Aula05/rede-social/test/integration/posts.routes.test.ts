@@ -1,0 +1,144 @@
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import request from 'supertest';
+import type { PrismaClient } from '@prisma/client';
+import { createServer } from '../../src/server.js';
+import { createTestPrismaClient, resetDatabase } from '../helpers/testDb.js';
+import { FakeImageStorage } from '../helpers/fakeImageStorage.js';
+import { registerAndLogin } from '../helpers/auth.js';
+
+const prisma: PrismaClient = createTestPrismaClient();
+let imageStorage: FakeImageStorage;
+let app: ReturnType<typeof createServer>;
+
+beforeEach(async () => {
+  await resetDatabase(prisma);
+  imageStorage = new FakeImageStorage();
+  app = createServer(prisma, imageStorage);
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+describe('POST /posts (autenticado)', () => {
+  it('rejeita quem não está logado', async () => {
+    const res = await request(app).post('/posts').type('form').send({ content: 'Sem sessão' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/login');
+  });
+
+  it('cria um post com o autor vindo da sessão, não do corpo (autorização)', async () => {
+    const { agent, userId } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+
+    const res = await agent.post('/posts').type('form').send({ content: 'Olá, Prisma!', tags: 'prisma, orm' });
+
+    expect(res.status).toBe(302);
+    const post = await prisma.post.findFirstOrThrow({ where: { content: 'Olá, Prisma!' }, include: { tags: true } });
+    expect(post.authorId).toBe(userId);
+    expect(post.tags.map((t) => t.name).sort()).toEqual(['orm', 'prisma']);
+  });
+
+  // Trabalho II: o contrato mudou de propósito — o campo do formulário passou
+  // de `image` para `images` (upload.array) e a URL saiu de `Post.imageUrl`
+  // para a tabela PostImage. Por isso este teste e o seguinte enviam o arquivo
+  // em `images`, e este lê a URL em `post.images`. O comportamento testado é o
+  // mesmo: a foto passa pela ImageStorage e a URL devolvida fica salva no post.
+  it('faz upload da imagem via ImageStorage e salva a URL retornada no post', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+
+    const res = await agent
+      .post('/posts')
+      .field('content', 'Post com foto')
+      .attach('images', Buffer.from('fake-image-bytes'), { filename: 'foto.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(302);
+    expect(imageStorage.uploads).toHaveLength(1);
+    expect(imageStorage.uploads[0].originalname).toBe('foto.png');
+
+    const post = await prisma.post.findFirstOrThrow({ where: { content: 'Post com foto' }, include: { images: true } });
+    expect(post.images.map((image) => image.url)).toEqual(['https://fake-bucket.test/foto.png']);
+  });
+
+  it('rejeita um arquivo que não é imagem (fileFilter do Multer)', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+
+    const res = await agent
+      .post('/posts')
+      .field('content', 'Post com anexo inválido')
+      .attach('images', Buffer.from('não é imagem'), { filename: 'arquivo.txt', contentType: 'text/plain' });
+
+    expect(res.status).toBe(500);
+    expect(imageStorage.uploads).toHaveLength(0);
+  });
+
+  it('rejeita post sem conteúdo', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+
+    const res = await agent.post('/posts').type('form').send({ content: '' });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /posts/:id/delete (autorização — dono do post)', () => {
+  it('o dono consegue apagar o próprio post', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+    await agent.post('/posts').type('form').send({ content: 'Post da Ana' });
+    const post = await prisma.post.findFirstOrThrow({ where: { content: 'Post da Ana' } });
+
+    const res = await agent.post(`/posts/${post.id}/delete`);
+
+    expect(res.status).toBe(302);
+    await expect(prisma.post.findUnique({ where: { id: post.id } })).resolves.toBeNull();
+  });
+
+  it('outro usuário autenticado NÃO consegue apagar (403, não 404)', async () => {
+    const author = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+    await author.agent.post('/posts').type('form').send({ content: 'Post da Ana' });
+    const post = await prisma.post.findFirstOrThrow({ where: { content: 'Post da Ana' } });
+
+    const other = await registerAndLogin(app, prisma, 'bruno@exemplo.com');
+    const res = await other.agent.post(`/posts/${post.id}/delete`);
+
+    expect(res.status).toBe(403);
+    await expect(prisma.post.findUnique({ where: { id: post.id } })).resolves.not.toBeNull();
+  });
+
+  it('quem não está logado é redirecionado para /login', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+    await agent.post('/posts').type('form').send({ content: 'Post da Ana' });
+    const post = await prisma.post.findFirstOrThrow({ where: { content: 'Post da Ana' } });
+
+    const res = await request(app).post(`/posts/${post.id}/delete`);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toBe('/login');
+  });
+});
+
+describe('API JSON de leitura (/api/...)', () => {
+  it('GET /api/posts/:id retorna 404 para post inexistente', async () => {
+    const res = await request(app).get('/api/posts/999');
+
+    expect(res.status).toBe(404);
+  });
+
+  it('GET /api/posts/:id retorna o post com autor e tags', async () => {
+    const { agent } = await registerAndLogin(app, prisma, 'ana@exemplo.com');
+    await agent.post('/posts').type('form').send({ content: 'Olá, Prisma!', tags: 'prisma' });
+    const created = await prisma.post.findFirstOrThrow({ where: { content: 'Olá, Prisma!' } });
+
+    const res = await request(app).get(`/api/posts/${created.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.author.name).toBe('Usuária de teste');
+    expect(res.body.tags[0].name).toBe('prisma');
+  });
+
+  it('GET /api/tags/:name/posts retorna 404 para tag inexistente', async () => {
+    const res = await request(app).get('/api/tags/inexistente/posts');
+
+    expect(res.status).toBe(404);
+  });
+});

@@ -1,3 +1,51 @@
+# Trabalho I — Kanban: registro de decisões
+
+> **Autora:** Francine Moraes · Web II (TADS). O README original do template continua abaixo.
+
+**Situação:** atividades obrigatórias 1 a 7 implementadas, mais as extras 8 (detalhe do cartão, `GET /cards/:id`)
+e 9 (busca, `GET /cards/search?query=`). `npm test`: **79 testes passando**. `npm run test:coverage`:
+**100%** de statements, branches, funções e linhas. Nenhum `test.todo` restou, e os testes de "responde 501"
+das rotas implementadas foram removidos.
+
+## Discussão obrigatória (respostas)
+
+**1. O acoplamento entre `boards/` e `cards/` é um problema real ou aceitável agora?**
+Para o tamanho atual, é **aceitável**. São dois módulos pequenos, no mesmo processo, e um conhece o outro só
+pela **interface** do repositório (`CardRepository` / `BoardRepository`), não pela implementação em memória.
+O `BoardController` precisa dos cartões para desenhar o quadro, e o `CardController` precisa perguntar se a
+coluna existe e qual é o limite de WIP. Esse é um acoplamento **de negócio** (a regra "o cartão precisa estar
+numa coluna que existe" depende dos dois), e não um acoplamento técnico. O custo aparece quando algo muda: os
+dois módulos são ao mesmo tempo **aferentes e eferentes** um do outro, então uma mudança em `BoardRepository`
+pode obrigar a mexer em `cards/`, e vice-versa.
+
+**2. Se `cards` virasse um serviço separado, o que quebraria primeiro?**
+A validação de coluna dentro do `CardController` (`boardRepository.getDefault().hasColumn(...)` e
+`findColumn(...).wipLimit`). Hoje é uma chamada de função na memória. Separado, viraria uma chamada de rede
+para o serviço de boards, que pode estar fora do ar ou lento. Também quebraria o `BoardController.showBoard`,
+que lê todos os cartões direto do `CardRepository` para montar a tela. A regra de **limite de WIP** é a mais
+delicada: contar os cartões e conferir o limite teria que acontecer entre dois serviços, sem uma transação única.
+
+**3. E se o `Board` "possuísse" a lista de ids de cartões?**
+**Resolveria:** o `CardController` não precisaria mais perguntar ao `BoardRepository` se a coluna existe. O
+próprio quadro saberia quais cartões estão em cada coluna e poderia aplicar o limite de WIP sozinho, num lugar
+só. **Criaria de novo:** a mesma informação ("em que coluna está o cartão") passaria a existir em dois lugares
+(no `Card.columnId` e na lista do `Board`), e as duas cópias precisariam ser mantidas iguais a cada criar,
+mover e excluir. Além disso, `boards/` passaria a depender ainda mais de `cards/`: o acoplamento mudaria de
+direção, mas não sumiria.
+
+## Decisões do grupo pedidas nos critérios de aceite
+
+| Atividade | Decisão | Onde está no código |
+| --- | --- | --- |
+| 2 / 5 — Onde aplicar o limite de WIP | **Nos dois lugares:** ao **criar** um cartão direto numa coluna e ao **mover** para outra coluna. Mover para a mesma coluna em que o cartão já está não conta. | `CardController.create` e `CardController.move` |
+| 4 — Restringir exclusão de cartão em "Concluído"? | **Não restringir.** Diferente da Aula 02 (onde a tarefa concluída era um registro do que foi feito), no quadro Kanban limpar a coluna "Concluído" é uma ação comum de organização. Por isso não foi criado erro novo. | `CardController.remove` |
+| 6 — Título duplicado | Bloqueado **na mesma coluna** (409), ao criar, ao editar e também ao **mover** (para não levar um título repetido para a outra coluna). Em colunas diferentes é permitido, igual à Aula 02. | `existsWithTitleInColumn(...)` em `create`, `update` e `move` |
+| 7 — Nomes de coluna duplicados no mesmo quadro? | **Permitidos.** As colunas são identificadas pelo `id` gerado (`col-xxxxxxxx`), não pelo nome. Assim, duas colunas "Revisão" não se confundem no código. | `Board.addColumn` |
+| 7 — `wipLimit` da coluna nova | Opcional. Vazio ou não numérico vira `null` (sem limite). | `BoardController.createColumn` |
+| 10 (estica) — `ColumnExistenceChecker` | **Não implementado.** Na nossa avaliação, uma porta só para "a coluna existe?" resolveria pouco: o `CardController` também precisa do `wipLimit` e do nome da coluna, então a porta cresceria até virar uma cópia do `BoardRepository`. Seria só disfarçar o acoplamento. | — |
+
+---
+
 # Aula 03 — Template Kanban (MVC + banco em memória + Tailwind)
 
 Template de partida para a atividade prática da Aula 03. Uma aplicação de gestão de tarefas estilo Trello/Jira (quadro → colunas → cartões), em MVC, com "banco de dados" em memória e UI em Tailwind (via CDN).

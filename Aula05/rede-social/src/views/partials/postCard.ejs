@@ -1,0 +1,99 @@
+<%#
+  Trabalho II — o "cartão" de UM post. É usado:
+  - pelo feed (views/feed.ejs), para a primeira página;
+  - por GET /api/feed (scroll infinito), que devolve este mesmo HTML via fetch;
+  - pela página do post (views/post.ejs), com `openComments: true`.
+  Os botões NÃO têm addEventListener próprio: os atributos data-action /
+  data-like-form / data-comment-form são lidos por UM listener no document
+  (delegação de eventos, ver src/public/app.js). Por isso eles funcionam
+  também nos posts que chegam depois, pelo scroll infinito.
+%>
+<% const isOpen = typeof openComments !== 'undefined' && openComments; %>
+<article class="bg-white rounded-lg shadow p-4" data-post-id="<%= post.id %>">
+  <header class="flex items-center justify-between">
+    <p class="text-sm font-medium text-slate-800"><%= post.author.name %></p>
+    <p class="text-xs text-slate-400"><%= new Date(post.createdAt).toLocaleString('pt-BR') %></p>
+  </header>
+
+  <a href="/posts/<%= post.id %>" class="block group">
+    <p class="text-slate-700 mt-2 group-hover:text-slate-900"><%= post.content %></p>
+  </a>
+
+  <% if (post.images.length === 1) { %>
+    <%# 0 ou 1 foto: igual era antes do Trabalho II %>
+    <img src="<%= post.images[0].url %>" alt="" class="mt-3 rounded-lg max-h-80 w-full object-cover" />
+  <% } else if (post.images.length > 1) { %>
+    <%# 2 ou mais fotos: carrossel em JavaScript puro (src/public/app.js) %>
+    <div class="relative mt-3" data-carousel data-index="0">
+      <% post.images.forEach((image, index) => { %>
+        <img
+          src="<%= image.url %>"
+          alt="Foto <%= index + 1 %> de <%= post.images.length %>"
+          data-slide
+          class="rounded-lg max-h-80 w-full object-cover <%= index === 0 ? '' : 'hidden' %>"
+        />
+      <% }) %>
+      <button type="button" data-action="carousel-prev" aria-label="Foto anterior"
+        class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 hover:bg-black/70">&lsaquo;</button>
+      <button type="button" data-action="carousel-next" aria-label="Próxima foto"
+        class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-8 h-8 hover:bg-black/70">&rsaquo;</button>
+      <div class="absolute bottom-2 inset-x-0 flex justify-center gap-1.5">
+        <% post.images.forEach((image, index) => { %>
+          <span data-dot class="w-2 h-2 rounded-full <%= index === 0 ? 'bg-white' : 'bg-white/50' %>"></span>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (post.tags.length > 0) { %>
+    <div class="flex gap-2 mt-3 flex-wrap">
+      <% post.tags.forEach((tag) => { %>
+        <span class="text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">#<%= tag.name %></span>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <footer class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100">
+    <%# Continua sendo um <form>: sem JavaScript, ele ainda funciona (com reload).
+        Com JavaScript, app.js intercepta o submit e usa fetch. %>
+    <form method="post" action="/posts/<%= post.id %>/like" data-like-form>
+      <button
+        type="submit"
+        title="Curtir"
+        data-liked="<%= post.likedByMe %>"
+        class="flex items-center gap-1.5 text-sm <%= post.likedByMe ? 'text-rose-600' : 'text-slate-500' %> hover:text-rose-600"
+      >
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="<%= post.likedByMe ? 'currentColor' : 'none' %>" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+        </svg>
+        <span data-like-count><%= post._count.likes %></span>
+      </button>
+    </form>
+
+    <button type="button" data-action="toggle-comments" title="Comentários"
+      class="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75h6.75m-6.75 3h4.5M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25-9 3.694-9 8.25c0 1.6.497 3.096 1.356 4.36.1.148.14.33.107.507l-.713 3.133 3.94-1.02c.16-.042.33-.02.48.043 1.15.49 2.45.767 3.83.767Z" />
+      </svg>
+      <span data-comment-count><%= post._count.comments %></span>
+    </button>
+
+    <% if (post.authorId === currentUserId) { %>
+      <form method="post" action="/posts/<%= post.id %>/delete" class="ml-auto">
+        <button type="submit" class="text-xs text-red-600 hover:underline">Apagar</button>
+      </form>
+    <% } %>
+  </footer>
+
+  <%# Comentários: carregados por fetch (GET /posts/:id/comments) na 1ª vez que abrir. %>
+  <section data-comments class="mt-3 pt-3 border-t border-slate-100 <%= isOpen ? '' : 'hidden' %>" <%= isOpen ? 'data-autoload' : '' %>>
+    <div data-comments-list class="divide-y"></div>
+    <form method="post" action="/posts/<%= post.id %>/comments" data-comment-form class="flex flex-col gap-2 mt-2">
+      <textarea name="content" required rows="2" maxlength="500" placeholder="Escreva um comentário..."
+        class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      <button type="submit" class="self-end bg-slate-800 text-white text-sm rounded px-3 py-1.5 hover:bg-slate-700 disabled:opacity-50">
+        Comentar
+      </button>
+    </form>
+  </section>
+</article>

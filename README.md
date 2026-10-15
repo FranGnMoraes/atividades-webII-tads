@@ -27,6 +27,8 @@ flowchart LR
     A["Aula 01: Node.js & SSR vs. CSR"] --> B["Aula 02: Padrão MVC & Pirâmide de Testes"]
     B --> C["Aula 03: Monólito Modular por Features"]
     C --> D["Aula 04: Persistência com Prisma ORM"]
+    D --> E["Aula 05 / Trabalho II: Auth, upload, curtidas, comentários e fetch"]
+    E --> F["Aula 07 / Trabalho III: Arquitetura hexagonal (Ports and Adapters)"]
 ```
 
 ---
@@ -95,6 +97,28 @@ flowchart LR
 * ✅ **Validação:** Suíte de 24 testes de integração utilizando banco SQLite temporário isolado por execução e requisições no `test.http`.
 
 
+### 📂 [Aula 05 — Trabalho II: Rede social com curtidas, comentários, várias fotos e scroll infinito](Aula05/rede-social)
+
+* 🎯 **Desafio Proposto:** evoluir a rede social da Aula 05 (login por sessão + upload) com curtidas, comentários, curtidas em comentários, posts com várias fotos em carrossel e feed com scroll infinito via `fetch`, sem recarregar a página.
+* 🛠️ **O que foi implementado e resolvido:**
+  * Módulos novos por feature: `likes/`, `comments/`, `feed/` e `notifications/`, cada um com Controller e rotas próprias.
+  * Schema: `Like`, `Comment`, `CommentLike` e `PostImage`, com uma **migration com passo de dados** que leva o antigo `Post.imageUrl` para `PostImage` sem perder fotos.
+  * `upload.array('images', 5)` reaproveitando a mesma `ImageStorage`; carrossel em JavaScript puro.
+  * Front-end com **delegação de eventos**, curtida **otimista** com rollback e scroll infinito com `IntersectionObserver` e paginação por cursor.
+  * Extras: editar o próprio comentário, comentários ordenados pelos mais curtidos e contador de novidades desde o último acesso.
+* ✅ **Validação:** 77 testes de integração (os 33 da Aula 05 + 44 novos), incluindo um teste que prova a migração sem perda de dados.
+
+---
+
+### 📂 [Aula 07 — Trabalho III: Serviço de notificações em Ports and Adapters](Aula07/notificacoes)
+
+* 🎯 **Desafio Proposto:** refatorar um serviço de notificações escrito de propósito em um único arquivo para arquitetura hexagonal, **sem mudar o comportamento da API**.
+* 🛠️ **O que foi implementado e resolvido:**
+  * Domínio puro (`Contact`, `Notification`, limite por minuto, regras de canal), casos de uso como portas de entrada e portas de saída (`ContactRepository`, `NotificationRepository`, `MessageSender`, `Clock`).
+  * Adaptadores: HTTP (Express), CLI, Prisma, memória e um por canal (fake, SMS, e-mail no console ou via **Nodemailer/Ethereal**, e o canal novo **WhatsApp**).
+  * Um único composition root, que é o único lugar que lê `process.env`. As divergências entre as cópias do código original foram mapeadas e registradas no README.
+* ✅ **Validação:** 98 testes em três camadas (unidade, integração e contrato). Os 34 testes de contrato passam **igual** contra o código original e contra o refatorado.
+
 ---
 
 ## 🛠️ Tecnologias & Ferramentas Utilizadas
@@ -104,6 +128,7 @@ flowchart LR
 | **Linguagem & Runtime** | [TypeScript](https://www.typescriptlang.org/) (Strict Mode), [Node.js](https://nodejs.org/) |
 | **Backend & Servidor** | [Express.js](https://expressjs.com/), [EJS](https://ejs.co/) (View Engine) |
 | **Persistência & ORM** | [Prisma ORM](https://www.prisma.io/), [SQLite](https://www.sqlite.org/) |
+| **Upload & E-mail** | [Multer](https://github.com/expressjs/multer), [Nodemailer](https://nodemailer.com/) |
 | **Testes Automatizados** | [Vitest](https://vitest.dev/), [Supertest](https://github.com/ladjs/supertest) |
 | **Ferramentas de Desenvolvimento** | REST Client (.http), Git, GitHub |
 

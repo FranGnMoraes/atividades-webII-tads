@@ -1,0 +1,53 @@
+{
+  "name": "aula07-notificacoes",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aula 07 - serviço de notificações multicanal (fake, SMS, e-mail) escrito propositalmente em um único arquivo, como ponto de partida para refatoração para Ports and Adapters.",
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "tsx src/index.ts",
+    "dev:watch": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:contract": "vitest run --project contract",
+    "test:contract:legacy": "CONTRACT_ENTRY=legacy/index.ts vitest run --project contract",
+    "test:coverage": "vitest run --coverage",
+    "cli": "tsx src/cli.ts",
+    "dev:memory": "PERSISTENCE=memory tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "nodemailer": "^10.1.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^26.2.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "prisma": "^7.9.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
+    "better-sqlite3@12.11.1": true,
+    "better-sqlite3@13.0.3": true
+  }
+}

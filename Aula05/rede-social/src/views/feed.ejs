@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aula 05 - Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-100 min-h-screen">
+    <header class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <% if (currentUser.avatarUrl) { %>
+          <img src="<%= currentUser.avatarUrl %>" alt="" class="w-9 h-9 rounded-full object-cover" />
+        <% } %>
+        <div>
+          <h1 class="text-lg font-semibold">Rede social — Aula 05</h1>
+          <p class="text-slate-300 text-sm">
+            Logado como <strong><%= currentUser.name %></strong>
+            (<%= currentUser._count.following %> seguindo, <%= currentUser._count.followers %> seguidores)
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/posts/new" class="bg-white text-slate-900 text-sm rounded px-3 py-1.5 hover:bg-slate-200">
+          Novo post
+        </a>
+        <form method="post" action="/logout">
+          <button type="submit" class="text-slate-300 text-sm hover:text-white">Sair</button>
+        </form>
+      </div>
+    </header>
+
+    <% const totalNew = notifications.newLikes + notifications.newComments; %>
+    <% if (totalNew > 0) { %>
+      <%# Trabalho II (extra 10): "notificação" simples, calculada no carregamento. %>
+      <div class="max-w-4xl mx-auto mt-6 px-4">
+        <p class="bg-amber-50 text-amber-800 text-sm rounded-lg px-4 py-3" data-notifications>
+          Desde o seu último acesso:
+          <strong><%= notifications.newLikes %></strong> <%= notifications.newLikes === 1 ? 'nova curtida' : 'novas curtidas' %> e
+          <strong><%= notifications.newComments %></strong> <%= notifications.newComments === 1 ? 'novo comentário' : 'novos comentários' %>
+          nos seus posts.
+        </p>
+      </div>
+    <% } %>
+
+    <main class="max-w-4xl mx-auto mt-8 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section class="md:col-span-2 flex flex-col gap-4">
+        <h2 class="text-slate-500 text-sm font-medium uppercase tracking-wide">Seu feed</h2>
+
+        <% if (feed.length === 0) { %>
+          <p class="bg-white rounded-lg shadow p-6 text-sm text-slate-500">
+            Ninguém que você segue postou ainda. Siga alguém na coluna ao lado.
+          </p>
+        <% } %>
+
+        <%# Trabalho II: os cartões vêm do partial (o mesmo que GET /api/feed usa). %>
+        <div id="feed-list" class="flex flex-col gap-4">
+          <%- include('partials/postList', { posts: feed, currentUserId: currentUser.id }) %>
+        </div>
+
+        <%# Scroll infinito: quando este elemento aparece na tela, app.js busca a
+            próxima página a partir do cursor (id do último post carregado). %>
+        <div id="feed-sentinel" data-next-cursor="<%= nextCursor ?? '' %>"></div>
+        <p id="feed-status" class="text-center text-sm text-slate-400 py-4">
+          <%= nextCursor ? '' : (feed.length > 0 ? 'Você chegou ao fim do feed.' : '') %>
+        </p>
+      </section>
+
+      <aside class="flex flex-col gap-3">
+        <h2 class="text-slate-500 text-sm font-medium uppercase tracking-wide">Pessoas</h2>
+        <div class="bg-white rounded-lg shadow divide-y">
+          <% others.forEach((user) => { %>
+            <div class="flex items-center justify-between px-4 py-3">
+              <span class="text-sm text-slate-700"><%= user.name %></span>
+              <% if (user.isFollowing) { %>
+                <span class="text-xs text-slate-400">Já segue</span>
+              <% } else { %>
+                <form method="post" action="/follow">
+                  <input type="hidden" name="targetId" value="<%= user.id %>" />
+                  <button type="submit" class="text-xs bg-slate-800 text-white rounded px-2 py-1 hover:bg-slate-700">
+                    Seguir
+                  </button>
+                </form>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      </aside>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

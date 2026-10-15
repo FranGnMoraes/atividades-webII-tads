@@ -1,0 +1,4 @@
+<%# Uma lista de cartões de post. Usado pelo feed e por GET /api/feed. %>
+<% posts.forEach((post) => { %>
+  <%- include('postCard', { post, currentUserId }) %>
+<% }) %>
